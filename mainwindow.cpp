@@ -6,6 +6,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    SignalData = nullptr;
     /*Соединение*/
     socket = new QTcpSocket;
     connect(socket, &QTcpSocket::readyRead, this, &MainWindow::ReadToClient);
@@ -33,7 +35,8 @@ MainWindow::~MainWindow()
     delete scene;
 
     if(SignalData){
-        SignalData->close();
+        if(SignalData->isOpen())
+            SignalData->close();
         delete SignalData;
     }
 }
