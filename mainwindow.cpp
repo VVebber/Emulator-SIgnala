@@ -68,6 +68,7 @@ void MainWindow::ReadToClient(){
             Waves->moveTo(Point);
         }// Удаление, волня(когда полностью отрисована)
         else if(Waves->elementCount() == 200){
+            Waves->moveTo(Point);
             Waves->clear();
         }
         else

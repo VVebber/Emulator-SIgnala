@@ -72,3 +72,9 @@
 16	62	1724879944842748333	/Users/malysevdanil/Documents/Projects/P2/Client/build/Qt_6_7_2_for_macOS-Debug/Client_autogen/mocs_compilation.cpp	b40bcda8cd15121b
 62	1364	1724879944888490776	CMakeFiles/Client.dir/mainwindow.cpp.o	5e5749789b949fe2
 1364	1608	1724879946191074401	Client.app/Contents/MacOS/Client	f124eec2d8180b7f
+14	46	1724881704629122964	Client_autogen/timestamp	b40bcda8cd15121b
+14	46	1724881704629122964	Client_autogen/mocs_compilation.cpp	b40bcda8cd15121b
+14	46	1724881704629122964	/Users/malysevdanil/Documents/Projects/P2/Client/build/Qt_6_7_2_for_macOS-Debug/Client_autogen/timestamp	b40bcda8cd15121b
+14	46	1724881704629122964	/Users/malysevdanil/Documents/Projects/P2/Client/build/Qt_6_7_2_for_macOS-Debug/Client_autogen/mocs_compilation.cpp	b40bcda8cd15121b
+46	961	1724881704661874324	CMakeFiles/Client.dir/mainwindow.cpp.o	5e5749789b949fe2
+961	1171	1724881705576750629	Client.app/Contents/MacOS/Client	f124eec2d8180b7f
