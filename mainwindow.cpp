@@ -62,7 +62,7 @@ void MainWindow::on_lineAddres_textChanged(const QString &arg1)
 void MainWindow::ReadToClient(){
     QTcpSocket* clientSocket = (QTcpSocket*)sender();
     QDataStream in(clientSocket);
-    in.setVersion(QDataStream::Qt_6_2);
+    in.setVersion(QDataStream::Qt_5_15);
     if(in.status() == QDataStream::Ok){
         QPoint Point;
         in >> Point;
@@ -90,7 +90,7 @@ void MainWindow::SendToClient() {
     QString str = ui->TypeSignal->currentText();
     Data.clear();
     QDataStream out(&Data, QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_6_2);
+    out.setVersion(QDataStream::Qt_5_15);
     out << str;
     socket->write(Data);
     qDebug() <<"Запрос отправлен";
