@@ -129,12 +129,12 @@ void MainWindow::on_SendRequest_clicked()
         {
             m_signalData = new QFile(ui->lineFileLinck->text());
             if(!m_signalData->open(QIODevice::WriteOnly | QIODevice::Text)){
-                QMessageBox::critical(0, "Файл не открыт", "Невозможно открыть файл для записи: " + SignalData->errorString());
+                QMessageBox::critical(0, "Файл не открыт", "Невозможно открыть файл для записи: " + m_signalData->errorString());
             }
         }
 
-        QTextStream WriteSignalData(m_signalData);
-        WriteSignalData<<"TypeSignal: " << ui->TypeSignal->currentText()<<"\n";
+        QTextStream writeSignalData(m_signalData);
+        writeSignalData<<"TypeSignal: " << ui->TypeSignal->currentText()<<"\n";
         /*Волны*/
         m_scene->removeItem(m_pathWaves);
         m_waves->clear();
@@ -148,7 +148,7 @@ void MainWindow::on_SendRequest_clicked()
     }
     else
     {
-        ui->label->setText("нес соединения");
+        ui->label->setText("нет соединения");
     }
 }
 
