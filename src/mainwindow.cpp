@@ -1,24 +1,30 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
+//#include <QPushButton>
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+    , m_ui(new Ui::MainWindow)
 {
-    ui->setupUi(this);
+    m_ui->setupUi(this);
 
     m_signalData = nullptr;
-    /*Соединение*/
+    //connect to server
     m_socket = new QTcpSocket;
-    connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::ReadToClient);
+    connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readToClient);
     connect(m_socket, &QTcpSocket::disconnected, m_socket, &QTcpSocket::deleteLater);
-    /*Система кординат*/
-    m_scene = new QGraphicsScene(this);           //Создание окла
-    m_scene->setSceneRect(-100, -100, 200, 200);  //Размеры 200x200
-    m_scene->addLine(-100,0,100,0);               //Линия для x
-    m_scene->addLine(0,-100,0,100);               //Линия для y
-    ui->WeveDisplay->setScene(m_scene);
-    /*Волны*/
+
+    connect(m_ui->ConnectToServer,&QPushButton::clicked, this, &MainWindow::onConnectToServerClicked);
+    connect(m_ui->SendRequest,&QPushButton::clicked, this, &MainWindow::onSendRequestClicked);
+    connect(m_ui->lineAddres, &QLineEdit::textChanged, this, &MainWindow::onLineAddresTextChanged);
+
+    m_scene = new QGraphicsScene(this);
+    m_scene->setSceneRect(-100, -100, 200, 200);
+    m_scene->addLine(-100,0,100,0);
+    m_scene->addLine(0,-100,0,100);
+    m_ui->WeveDisplay->setScene(m_scene);
+    /**/
     m_waves = new QPainterPath();
     m_pathWaves = new QGraphicsPathItem;
     m_scene->addItem(m_pathWaves);
@@ -26,7 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    delete ui;
+    delete m_ui;
     delete m_socket;
 
     delete m_waves;
@@ -44,8 +50,7 @@ MainWindow::~MainWindow()
     }
 }
 
-//Окно ввода ip
-void MainWindow::on_lineAddres_textChanged(const QString &arg1)
+void MainWindow::onLineAddresTextChanged(const QString &arg1)
 {
     QHostAddress address(arg1);
     QString state = "0";
@@ -60,24 +65,25 @@ void MainWindow::on_lineAddres_textChanged(const QString &arg1)
         }
     }
 
-    ui->lineAddres->setProperty("state", state);
-    style()->polish(ui->lineAddres);
-    ui->lineAddres->update();
+    m_ui->lineAddres->setProperty("state", state);
+    style()->polish(m_ui->lineAddres);
+    m_ui->lineAddres->update();
 }
 
 /*TCP/IP*/
-void MainWindow::ReadToClient(){
+void MainWindow::readToClient(){
     QTcpSocket* clientSocket = (QTcpSocket*)sender();
     QDataStream in(clientSocket);
     in.setVersion(QDataStream::Qt_5_15);
     if(in.status() == QDataStream::Ok){
         QPoint Point;
         in >> Point;
-        //*Волны, установка начальной позиции
+
         if(m_waves->elementCount() == 0){
             m_waves->moveTo(Point);
-        }// Удаление, волня(когда полностью отрисована)
-        else if(m_waves->elementCount() == 200){
+        }
+        else if(m_waves->elementCount() == 200)
+        {
             m_waves->moveTo(Point);
             m_waves->clear();
         }
@@ -93,8 +99,8 @@ void MainWindow::ReadToClient(){
         qDebug() <<"Data error";
 }
 
-void MainWindow::SendToClient() {
-    QString typeSignal = ui->TypeSignal->currentText();
+void MainWindow::sendToClient() {
+    QString typeSignal = m_ui->TypeSignal->currentText();
     m_data.clear();
     QDataStream out(&m_data, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_5_15);
@@ -104,38 +110,46 @@ void MainWindow::SendToClient() {
 }
 /*=====*/
 
-
-//Кнопка подключения
-void MainWindow::on_ConnectToServer_clicked()
+void MainWindow::onConnectToServerClicked()
 {
-    m_socket->connectToHost(ui->lineAddres->text(), ui->spinPort->value());
-    if (m_socket->waitForConnected(3000))
+    if(!m_socket->isOpen())
     {
-        qDebug() << "Подключение установлено";
-        QMessageBox::about(this, "Status", "Полключено");
+        m_socket->connectToHost(m_ui->lineAddres->text(), m_ui->spinPort->value());
+
+        if (m_socket->waitForConnected(1000))
+        {
+            qDebug() << "Подключение установлено";
+            QMessageBox::about(this, "Status", "Полключено");
+        }
+        else
+        {
+            m_socket->close();
+            qDebug() << "Не подключено";
+        }
     }
     else
     {
-        qDebug() << "Не подключено";
+        QMessageBox::about(this, "Status", "Полключено");
     }
 }
 
 
-void MainWindow::on_SendRequest_clicked()
+void MainWindow::onSendRequestClicked()
 {
     if(m_socket->isValid())
     {
         if(m_signalData)
         {
-            m_signalData = new QFile(ui->lineFileLinck->text());
-            if(!m_signalData->open(QIODevice::WriteOnly | QIODevice::Text)){
+            m_signalData = new QFile(m_ui->lineFileLinck->text());
+            if(!m_signalData->open(QIODevice::WriteOnly | QIODevice::Text))
+            {
                 QMessageBox::critical(0, "Файл не открыт", "Невозможно открыть файл для записи: " + m_signalData->errorString());
             }
         }
 
         QTextStream writeSignalData(m_signalData);
-        writeSignalData<<"TypeSignal: " << ui->TypeSignal->currentText()<<"\n";
-        /*Волны*/
+        writeSignalData<<"TypeSignal: " << m_ui->TypeSignal->currentText()<<"\n";
+
         m_scene->removeItem(m_pathWaves);
         m_waves->clear();
         delete m_waves;
@@ -144,11 +158,11 @@ void MainWindow::on_SendRequest_clicked()
         m_scene->addItem(m_pathWaves);
 
         qDebug() << "press";
-        SendToClient();
+        sendToClient();
     }
     else
     {
-        ui->label->setText("нет соединения");
+        m_ui->label->setText("нет соединения");
     }
 }
 

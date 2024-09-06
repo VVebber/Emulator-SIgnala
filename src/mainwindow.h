@@ -28,29 +28,31 @@ public:
 
 private slots:
 
-    void on_lineAddres_textChanged(const QString &arg1);
+    void onLineAddresTextChanged(const QString &arg1);
 
-    void ReadToClient();
+    void readToClient();
 
-    void on_ConnectToServer_clicked();
+    void onConnectToServerClicked();
 
-    void on_SendRequest_clicked();
+    void onSendRequestClicked();
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow *m_ui;//
 
-    QTcpSocket* m_socket;              //
+    QTcpSocket* m_socket;
 
     QByteArray m_data;               //
 
-    QPainterPath* m_waves;           // Для отрисовки волны
+    QPainterPath* m_waves;           //
 
-    QGraphicsPathItem* m_pathWaves;  // Для отчистки волны
+    QGraphicsPathItem* m_pathWaves;  //
 
-    QGraphicsScene* m_scene;           // Для вывода волны на экран
+    QGraphicsScene* m_scene;
 
     QFile* m_signalData;
-    void SendToClient();
+
+private:
+    void sendToClient();
 };
 #endif // MAINWINDOW_H
 
