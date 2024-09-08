@@ -1,8 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
-//#include <QPushButton>
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::MainWindow)
@@ -12,11 +10,13 @@ MainWindow::MainWindow(QWidget *parent)
     m_signalData = nullptr;
     //connect to server
     m_socket = new QTcpSocket;
+
     connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readToClient);
     connect(m_socket, &QTcpSocket::disconnected, m_socket, &QTcpSocket::deleteLater);
-
+    /*Buttons*/
     connect(m_ui->ConnectToServer,&QPushButton::clicked, this, &MainWindow::onConnectToServerClicked);
     connect(m_ui->SendRequest,&QPushButton::clicked, this, &MainWindow::onSendRequestClicked);
+    /*Line*/
     connect(m_ui->lineAddres, &QLineEdit::textChanged, this, &MainWindow::onLineAddresTextChanged);
 
     m_scene = new QGraphicsScene(this);
@@ -33,7 +33,8 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete m_ui;
-    delete m_socket;
+
+    //m_socket->deleteLater();?
 
     delete m_waves;
     delete m_pathWaves;
@@ -49,7 +50,7 @@ MainWindow::~MainWindow()
         delete m_signalData;
     }
 }
-
+/*the IP input field*/
 void MainWindow::onLineAddresTextChanged(const QString &arg1)
 {
     QHostAddress address(arg1);
@@ -60,7 +61,8 @@ void MainWindow::onLineAddresTextChanged(const QString &arg1)
     }
     else
     {
-        if(QAbstractSocket::IPv4Protocol == address.protocol()){
+        if(QAbstractSocket::IPv4Protocol == address.protocol())
+        {
             state = "1";
         }
     }
@@ -79,7 +81,8 @@ void MainWindow::readToClient(){
         QPoint Point;
         in >> Point;
 
-        if(m_waves->elementCount() == 0){
+        if(m_waves->elementCount() == 0)
+        {
             m_waves->moveTo(Point);
         }
         else if(m_waves->elementCount() == 200)
@@ -88,15 +91,20 @@ void MainWindow::readToClient(){
             m_waves->clear();
         }
         else
+        {
             m_waves->lineTo(Point);
+        }
         m_pathWaves->setPath(*m_waves);
 
-        qDebug() <<"Size"<<m_waves->elementCount();
+        qDebug()<<"cout" << m_waves->elementCount();
 
-        QTextStream WriteSignalData(m_signalData);
-        WriteSignalData<<Point.x() <<":"<<Point.y()<<"\n";
-    } else
+        //  QTextStream WriteSignalData(m_signalData);
+        //  WriteSignalData<<Point.x() <<":"<<Point.y()<<"\n";
+    }
+    else
+    {
         qDebug() <<"Data error";
+    }
 }
 
 void MainWindow::sendToClient() {
@@ -118,13 +126,15 @@ void MainWindow::onConnectToServerClicked()
 
         if (m_socket->waitForConnected(1000))
         {
-            qDebug() << "Подключение установлено";
-            QMessageBox::about(this, "Status", "Полключено");
+            m_ui->textBrowser->append(QString("Подключение установлено: ip %1, port %2")
+                                          .arg(m_ui->lineAddres->text())
+                                          .arg(m_ui->spinPort->value()));
+
         }
         else
         {
             m_socket->close();
-            qDebug() << "Не подключено";
+            m_ui->textBrowser->append(QString("Не подключено"));
         }
     }
     else
@@ -162,7 +172,7 @@ void MainWindow::onSendRequestClicked()
     }
     else
     {
-        m_ui->label->setText("нет соединения");
+        m_ui->textBrowser->append("Не возможно отправить запрос, нет соединения.");
     }
 }
 

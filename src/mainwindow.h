@@ -37,15 +37,15 @@ private slots:
     void onSendRequestClicked();
 
 private:
-    Ui::MainWindow *m_ui;//
+    Ui::MainWindow *m_ui;
 
     QTcpSocket* m_socket;
 
-    QByteArray m_data;               //
+    QByteArray m_data;
 
-    QPainterPath* m_waves;           //
+    QPainterPath* m_waves;
 
-    QGraphicsPathItem* m_pathWaves;  //
+    QGraphicsPathItem* m_pathWaves;
 
     QGraphicsScene* m_scene;
 
