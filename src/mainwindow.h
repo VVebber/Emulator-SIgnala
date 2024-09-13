@@ -20,33 +20,30 @@ QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
 {
-  Q_OBJECT
+    Q_OBJECT
 
 public:
-  MainWindow(QWidget *parent = nullptr);
-  ~MainWindow();
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
 
 private slots:
-
-  void onLineAddresTextChanged(const QString &arg1);
-
-  void readToClient();
-
-  void onConnectToServerClicked();
-
-  void onSendRequestClicked();
+    void onLineAddresTextChanged(const QString &arg1);
+    void readToClient();
+    void deleteSocket();
+    void onConnectToServerClicked();
+    void onSendRequestClicked();
 
 private:
-  Ui::MainWindow *m_ui;
-  QTcpSocket* m_socket;
-  QByteArray m_data;
-  QPainterPath* m_waves;
-  QGraphicsPathItem* m_pathWaves;
-  QGraphicsScene* m_scene;
-  QFile* m_signalData;
+    Ui::MainWindow *m_ui;
+    QTcpSocket* m_socket;
+    QPainterPath* m_waves;
+    QGraphicsPathItem* m_pathWaves;
+    QGraphicsScene* m_scene;
 
 private:
-  void sendToClient();
+    void createSocket();
+    void sendToClient();
+    void settingCoordinateSystems();
 };
 #endif // MAINWINDOW_H
 
