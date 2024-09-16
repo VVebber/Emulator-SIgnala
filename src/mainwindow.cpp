@@ -26,14 +26,16 @@ MainWindow::~MainWindow()
     delete m_scene;
 }
 
-void MainWindow::createSocket(){
+void MainWindow::createSocket()
+{
     m_socket = new QTcpSocket;
 
     connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readToClient);
     connect(m_socket, &QTcpSocket::disconnected, this, &MainWindow::deleteSocket);
 }
 
-void MainWindow::deleteSocket(){
+void MainWindow::deleteSocket()
+{
     disconnect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readToClient);
     disconnect(m_socket, &QTcpSocket::disconnected, this, &MainWindow::deleteSocket);
 
@@ -42,7 +44,8 @@ void MainWindow::deleteSocket(){
     m_socket = nullptr;
 }
 
-void MainWindow::settingCoordinateSystems(){
+void MainWindow::settingCoordinateSystems()
+{
     connect(m_ui->lineAddres, &QLineEdit::textChanged, this, &MainWindow::onLineAddresTextChanged);
 
     m_scene = new QGraphicsScene(this);
@@ -77,7 +80,8 @@ void MainWindow::onLineAddresTextChanged(const QString &arg1)
     m_ui->lineAddres->update();
 }
 
-void MainWindow::readToClient(){
+void MainWindow::readToClient()
+{
     QTcpSocket* clientSocket = (QTcpSocket*)sender();
     QDataStream in(clientSocket);
     in.setVersion(QDataStream::Qt_5_15);
@@ -108,7 +112,8 @@ void MainWindow::readToClient(){
     }
 }
 
-void MainWindow::sendToClient() {
+void MainWindow::sendToClient()
+{
     QString typeSignal = m_ui->TypeSignal->currentText();
     QByteArray data;
     data.clear();
