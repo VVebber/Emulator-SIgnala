@@ -1,11 +1,17 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-#include <QTcpServer>
-#include <QMessageBox>
-#include <QStyle>
-#include <QTextStream>
 #include <QGraphicsPathItem>
+#include <QMessageBox>
+#include <QTextStream>
+#include <QTcpServer>
+#include <iostream>
+#include <QStyle>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <errno.h>
 
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
@@ -44,16 +50,17 @@ void MainWindow::createSocket()
 {
   m_socket = new QTcpSocket;
 
-  connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readToClient);
+  connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFroClient);
   connect(m_socket, &QTcpSocket::disconnected, this, &MainWindow::deleteSocket);
 }
 
 void MainWindow::deleteSocket()
 {
-  disconnect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readToClient);
+  disconnect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFroClient);
   disconnect(m_socket, &QTcpSocket::disconnected, this, &MainWindow::deleteSocket);
 
-   m_ui->textBrowser->append("disconnecting the connection");
+  if(m_ui->textBrowser)
+    m_ui->textBrowser->append("disconnecting the connection");
   m_socket->close();
   m_socket->deleteLater();
   m_socket = nullptr;
@@ -95,7 +102,7 @@ void MainWindow::onLineAddresTextChanged(const QString &arg1)
   m_ui->lineAddres->update();
 }
 
-void MainWindow::readToClient()
+void MainWindow::readFroClient()
 {
   QTcpSocket* clientSocket = (QTcpSocket*)sender();
   QDataStream in(clientSocket);
@@ -118,8 +125,6 @@ void MainWindow::readToClient()
       m_waves->lineTo(Point);
     }
     m_pathWaves->setPath(*m_waves);
-
-    qDebug()<<"cout" << m_waves->elementCount();
   }
   else
   {
@@ -161,11 +166,34 @@ void MainWindow::onConnectToServerClicked()
   {
     m_socket->connectToHost(m_ui->lineAddres->text(), m_ui->spinPort->value());
 
+    //m_socket->setSocketOption(QAbstractSocket::KeepAliveOption, 1);
     if (m_socket->waitForConnected(1000))
     {
       m_ui->textBrowser->append(QString("Подключение установлено: ip %1, port %2")
                                 .arg(m_ui->lineAddres->text())
                                 .arg(m_ui->spinPort->value()));
+
+      int intSocketDescriptor = m_socket->socketDescriptor();
+
+      int keepAlive = 1;
+      if (setsockopt(intSocketDescriptor, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(keepAlive)) == -1) {
+        qWarning() << "1Failed to set keep_alive."<<strerror(errno);
+      }
+
+      int keepIdle = 10;
+      if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPALIVE, &keepIdle, sizeof(keepIdle)) == -1) {
+        qWarning() << "2Failed to set TCP_KEEPIDLE."<<strerror(errno);
+      }
+
+      int keepInterval = 5;
+      if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(keepInterval)) == -1) {
+        qWarning() << "3Failed to set TCP_KEEPINTVL."<<strerror(errno);
+      }
+
+      int keepCount = 2;
+      if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(keepCount)) == -1) {
+        qWarning() << "4Failed to set TCP_KEEPCNT."<<strerror(errno);
+      }
     }
     else
     {

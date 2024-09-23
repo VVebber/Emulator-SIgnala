@@ -24,7 +24,7 @@ public:
 
 private slots:
   void onLineAddresTextChanged(const QString &arg1);
-  void readToClient(); //TODO переименовать в readFromClient();
+  void readFroClient();
   void deleteSocket();
   void onConnectToServerClicked();
   void onSendRequestClicked();
