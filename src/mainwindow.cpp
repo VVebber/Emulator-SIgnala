@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include <QGraphicsPathItem>
+#include <QJsonDocument>
 #include <QMessageBox>
 #include <QTextStream>
 #include <QJsonArray>
@@ -25,11 +26,11 @@ MainWindow::MainWindow(QWidget *parent)
 
   connect(m_ui->ConnectToServer,&QPushButton::clicked, this, &MainWindow::onConnectToServerClicked);
   connect(m_ui->SendRequest,&QPushButton::clicked, this, &MainWindow::onSendRequestClicked);
+  connect(m_ui->checkBox,&QPushButton::clicked, this, &MainWindow::onCheckBoxClicked);
 
   m_ui->lineAddres->setText("192.168.0.45");
 
   settingCoordinateSystems();
-  initCommands();
 }
 
 MainWindow::~MainWindow()
@@ -45,17 +46,6 @@ MainWindow::~MainWindow()
     m_socket->close();
     delete m_socket;
   }
-}
-
-void MainWindow::initCommands()
-{
-  QJsonArray typeSignal;
-  typeSignal.append("sin");
-  typeSignal.append("cos");
-  typeSignal.append("tan");
-  m_commands["TypeSignal"] = typeSignal;
-  m_commands["ActiveSignal"] = typeSignal[1];
-  qDebug()<<m_commands;
 }
 
 void MainWindow::createSocket()
@@ -144,16 +134,11 @@ void MainWindow::readFroClient()
   }
 }
 
-void MainWindow::sendToClient()
+void MainWindow::sendToClient(QJsonObject message)
 {
-  QString typeSignal = m_ui->TypeSignal->currentText();
-  QByteArray data;
-  data.clear();
-  QDataStream out(&data, QIODevice::WriteOnly);
-  out.setVersion(QDataStream::Qt_5_15);
-  out << typeSignal;
-  m_socket->write(data);
-  qDebug() <<"Request sent";
+  QJsonDocument document(message);
+  m_socket->write(document.toJson());
+  qDebug() <<"Request sent: "<< message;
 }
 
 void MainWindow::onConnectToServerClicked()
@@ -225,12 +210,26 @@ void MainWindow::onSendRequestClicked()
       m_scene->addItem(m_pathWaves);
 
       qDebug() << "press";
-      sendToClient();
+      QJsonObject typeSignal;
+      typeSignal["command"] = "setting the type of signal";
+      typeSignal["TypeSignal"] = m_ui->TypeSignal->currentText();
+      sendToClient(typeSignal);
     }
   }
   else
   {
     m_ui->textBrowser->append("Unable to send request, no connection.");
   }
+}
+
+
+void MainWindow::onCheckBoxClicked()
+{
+  qDebug() << "press";
+  QJsonObject typeSignal;
+  typeSignal["command"] = "setting the type of signal";
+  typeSignal["drawPoint"] = "";
+  sendToClient(typeSignal);
+  qDebug()<<typeSignal;
 }
 

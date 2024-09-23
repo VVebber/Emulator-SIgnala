@@ -30,18 +30,18 @@ private slots:
   void onConnectToServerClicked();
   void onSendRequestClicked();
 
+  void onCheckBoxClicked();
+
 private:
   Ui::MainWindow *m_ui;
   QTcpSocket* m_socket;
   QPainterPath* m_waves;
   QGraphicsPathItem* m_pathWaves;
   QGraphicsScene* m_scene;
-  QJsonObject m_commands;
 
 private:
-  void initCommands();
   void createSocket();
-  void sendToClient();
+  void sendToClient(QJsonObject message);
   void settingCoordinateSystems();
 };
 #endif // MAINWINDOW_H
