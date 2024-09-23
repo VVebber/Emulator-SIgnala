@@ -3,8 +3,8 @@
 #include <QGraphicsPathItem>
 #include <QMessageBox>
 #include <QTextStream>
+#include <QJsonArray>
 #include <QTcpServer>
-#include <iostream>
 #include <QStyle>
 
 #include <sys/socket.h>
@@ -29,6 +29,7 @@ MainWindow::MainWindow(QWidget *parent)
   m_ui->lineAddres->setText("192.168.0.45");
 
   settingCoordinateSystems();
+  initCommands();
 }
 
 MainWindow::~MainWindow()
@@ -44,6 +45,17 @@ MainWindow::~MainWindow()
     m_socket->close();
     delete m_socket;
   }
+}
+
+void MainWindow::initCommands()
+{
+  QJsonArray typeSignal;
+  typeSignal.append("sin");
+  typeSignal.append("cos");
+  typeSignal.append("tan");
+  m_commands["TypeSignal"] = typeSignal;
+  m_commands["ActiveSignal"] = typeSignal[1];
+  qDebug()<<m_commands;
 }
 
 void MainWindow::createSocket()
@@ -148,62 +160,54 @@ void MainWindow::onConnectToServerClicked()
 {
   if(m_socket)
   {
-
-    if(m_socket->peerAddress().toString() != m_ui->lineAddres->text() ||
-       m_socket->peerPort() != m_ui->spinPort->value())
-    {
-      m_ui->textBrowser->append("reconnecting to the server");
-      deleteSocket();
-    }
-  }
-  if(!m_socket)
-  {
-    createSocket();
+    m_ui->textBrowser->append("reconnecting to the server");
+    deleteSocket();
+    m_ui->ConnectToServer->setText("Connect");
+    return;
   }
 
+  createSocket();
+  m_ui->ConnectToServer->setText("Disconnect");
 
-  if(!m_socket->isOpen())
+  m_socket->connectToHost(m_ui->lineAddres->text(), m_ui->spinPort->value());
+
+  if (m_socket->waitForConnected(1000))
   {
-    m_socket->connectToHost(m_ui->lineAddres->text(), m_ui->spinPort->value());
+    m_ui->textBrowser->append(QString("Подключение установлено: ip %1, port %2")
+                              .arg(m_ui->lineAddres->text())
+                              .arg(m_ui->spinPort->value()));
 
-    //m_socket->setSocketOption(QAbstractSocket::KeepAliveOption, 1);
-    if (m_socket->waitForConnected(1000))
+    int intSocketDescriptor = m_socket->socketDescriptor();
+
+    int keepAlive = 1;
+    if (setsockopt(intSocketDescriptor, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(keepAlive)) == -1)
     {
-      m_ui->textBrowser->append(QString("Подключение установлено: ip %1, port %2")
-                                .arg(m_ui->lineAddres->text())
-                                .arg(m_ui->spinPort->value()));
-
-      int intSocketDescriptor = m_socket->socketDescriptor();
-
-      int keepAlive = 1;
-      if (setsockopt(intSocketDescriptor, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(keepAlive)) == -1) {
-        qWarning() << "1Failed to set keep_alive."<<strerror(errno);
-      }
-
-      int keepIdle = 10;
-      if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPALIVE, &keepIdle, sizeof(keepIdle)) == -1) {
-        qWarning() << "2Failed to set TCP_KEEPIDLE."<<strerror(errno);
-      }
-
-      int keepInterval = 5;
-      if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(keepInterval)) == -1) {
-        qWarning() << "3Failed to set TCP_KEEPINTVL."<<strerror(errno);
-      }
-
-      int keepCount = 2;
-      if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(keepCount)) == -1) {
-        qWarning() << "4Failed to set TCP_KEEPCNT."<<strerror(errno);
-      }
+      qWarning() << "1Failed to set keep_alive."<<strerror(errno);
     }
-    else
+
+    int keepIdle = 10;
+    if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(keepIdle)) == -1)
     {
-      m_socket->close();
-      m_ui->textBrowser->append(QString("Не подключено"));
+      qWarning() << "2Failed to set TCP_KEEPIDLE."<<strerror(errno);
+    }
+
+    int keepInterval = 5;
+    if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(keepInterval)) == -1)
+    {
+      qWarning() << "3Failed to set TCP_KEEPINTVL."<<strerror(errno);
+    }
+
+    int keepCount = 2;
+    if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(keepCount)) == -1)
+    {
+      qWarning() << "4Failed to set TCP_KEEPCNT."<<strerror(errno);
     }
   }
   else
   {
-    QMessageBox::about(this, "Status", "Полключено");
+    m_socket->close();
+    deleteSocket();
+    m_ui->textBrowser->append(QString("Не подключено"));
   }
 }
 

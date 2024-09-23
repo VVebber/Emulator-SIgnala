@@ -3,7 +3,7 @@
 
 #include <QMainWindow>
 #include <QTcpSocket>
-
+#include <QJsonObject>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -13,6 +13,7 @@ QT_END_NAMESPACE
 
 class QGraphicsPathItem;
 class QGraphicsScene;
+//class Q
 
 class MainWindow : public QMainWindow
 {
@@ -35,8 +36,10 @@ private:
   QPainterPath* m_waves;
   QGraphicsPathItem* m_pathWaves;
   QGraphicsScene* m_scene;
+  QJsonObject m_commands;
 
 private:
+  void initCommands();
   void createSocket();
   void sendToClient();
   void settingCoordinateSystems();
