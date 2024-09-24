@@ -9,7 +9,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt5 COMPONENTS Widgets Network REQUIRES)
+find_package(Qt5 COMPONENTS Widgets Network REQUIRES Xml)
 
 set(PROJECT_SOURCES
         src/main.cpp
@@ -22,4 +22,4 @@ add_executable(Client
   ${PROJECT_SOURCES}
 )
 
-target_link_libraries(Client PRIVATE Qt5::Widgets Qt5::Network)
+target_link_libraries(Client PRIVATE Qt5::Widgets Qt5::Network Qt5::Xml)

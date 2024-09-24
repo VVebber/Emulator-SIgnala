@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include <QJsonArray>
+#include <QtXml>
 #include <QTcpServer>
 #include <QStyle>
 
@@ -106,31 +107,41 @@ void MainWindow::onLineAddresTextChanged(const QString &arg1)
 
 void MainWindow::readFroClient()
 {
-  QTcpSocket* clientSocket = (QTcpSocket*)sender();
-  QDataStream in(clientSocket);
-  in.setVersion(QDataStream::Qt_5_15);
-  if(in.status() == QDataStream::Ok){
-    QPoint Point;
-    in >> Point;
+  QJsonObject message;
+  QJsonDocument document;
+  document = QJsonDocument::fromJson(m_socket->readAll());
 
-    if(m_waves->elementCount() == 0)
-    {
-      m_waves->moveTo(Point);
-    }
-    else if(m_waves->elementCount() == 200)
-    {
-      m_waves->moveTo(Point);
-      m_waves->clear();
-    }
-    else
-    {
-      m_waves->lineTo(Point);
-    }
-    m_pathWaves->setPath(*m_waves);
-  }
-  else
+  message = document.object();
+  qDebug() <<"read "<<message;
+  if(message.contains("command"))
   {
-    qDebug() <<"Data error";
+    QString command = message["command"].toString();
+    if(command == "point for graphing function")
+    {
+      QPoint point;
+      QJsonArray points = message["Point"].toArray();
+      if(points.size()%2 != 0)
+      {
+        qDebug() << "problem with points";
+        points.removeLast();
+      }
+
+      for(size_t i = 0; i < points.size(); i+=2)
+      {
+        point.setX(points.at(i).toInt());
+        point.setY(points.at(i + 1).toInt());
+        if(m_waves->elementCount() == 200)
+        {
+          m_waves->moveTo(point);
+          m_waves->clear();
+        }
+        else
+        {
+          m_waves->lineTo(point);
+        }
+        m_pathWaves->setPath(*m_waves);
+      }
+    }
   }
 }
 
@@ -212,7 +223,7 @@ void MainWindow::onSendRequestClicked()
       qDebug() << "press";
       QJsonObject typeSignal;
       typeSignal["command"] = "setting the type of signal";
-      typeSignal["TypeSignal"] = m_ui->TypeSignal->currentText();
+      typeSignal["VariableData"] = m_ui->TypeSignal->currentText();
       sendToClient(typeSignal);
     }
   }
@@ -225,11 +236,48 @@ void MainWindow::onSendRequestClicked()
 
 void MainWindow::onCheckBoxClicked()
 {
-  qDebug() << "press";
-  QJsonObject typeSignal;
-  typeSignal["command"] = "setting the type of signal";
-  typeSignal["drawPoint"] = "";
-  sendToClient(typeSignal);
-  qDebug()<<typeSignal;
+  QDomDocument doc;
+  /*
+
+    <?xml encoding="utf-8" version="1.0" ?>
+    <Task>
+      <commad>command name</command>
+      <VariableData>awadw</VariableData>
+      <Variableaw>awadw</VariableDaawd>
+    </Task>
+
+*/
+  { // генерация задачи
+    QDomElement root = doc.createElement("task");
+
+    QDomElement command = doc.createElement("command");
+    QDomText variableData = doc.createTextNode("cos");
+    command.appendChild(variableData);
+
+
+    root.appendChild(command);
+
+    doc.appendChild(root);
+    qDebug() << doc.toByteArray(0);
+  }
+
+  {
+    QDomElement root = doc.documentElement().toElement();
+    QDomElement command = root.elementsByTagName("command").at(0).toElement();
+    QDomText text = command.firstChild().toText();
+
+
+
+    qDebug() << "Server parsed: " << text.data();
+  }
+//  qDebug()<< messega.documentElement().firstChildElement("command2").text();
+  if(m_socket != nullptr)
+  {
+    qDebug() << "press";
+    QJsonObject typeSignal;
+    typeSignal["command"] = "setting draw point";
+    sendToClient(typeSignal);
+    qDebug()<<typeSignal;
+  }
 }
 
