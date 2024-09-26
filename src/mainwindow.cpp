@@ -5,9 +5,11 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include <QJsonArray>
-#include <QtXml>
 #include <QTcpServer>
 #include <QStyle>
+#include <QString>
+#include <QList>
+#include <QtXml>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -29,8 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
   connect(m_ui->SendRequest,&QPushButton::clicked, this, &MainWindow::onSendRequestClicked);
   connect(m_ui->checkBox,&QPushButton::clicked, this, &MainWindow::onCheckBoxClicked);
 
-  m_ui->lineAddres->setText("192.168.0.45");
-
+  m_ui->lineAddres->setText("127.0.0.1");
   settingCoordinateSystems();
 }
 
@@ -96,6 +97,7 @@ void MainWindow::onLineAddresTextChanged(const QString &arg1)
   {
     if(QAbstractSocket::IPv4Protocol == address.protocol())
     {
+
       state = "1";
     }
   }
@@ -107,49 +109,72 @@ void MainWindow::onLineAddresTextChanged(const QString &arg1)
 
 void MainWindow::readFroClient()
 {
-  QJsonObject message;
-  QJsonDocument document;
-  document = QJsonDocument::fromJson(m_socket->readAll());
-
-  message = document.object();
-  qDebug() <<"read "<<message;
-  if(message.contains("command"))
+  QList<float> points;
+  if(m_ui->comboBox->currentText() == "XML")
   {
-    QString command = message["command"].toString();
+    QDomDocument main;
+    main.setContent(m_socket->readAll());
+    QDomElement box = main.documentElement();
+    QString command = box.elementsByTagName("command").at(0).toElement().text();
+    QDomNodeList variableDataNodes = box.elementsByTagName("VariableData").at(0).childNodes();
+
+    QString textMessege = box.toText().data();
     if(command == "point for graphing function")
     {
-      QPoint point;
-      QJsonArray points = message["Point"].toArray();
-      if(points.size()%2 != 0)
+      for (int i = 0; i < variableDataNodes.size(); ++i)
       {
-        qDebug() << "problem with points";
-        points.removeLast();
+        points.push_back(variableDataNodes.at(i).toElement().childNodes().at(0).toText().data().toInt());
       }
+      drawPoint(points);
+    }
+  }
+  else
+  {
+    QJsonObject message;
+    QJsonDocument document;
+    document = QJsonDocument::fromJson(m_socket->readAll());
 
-      for(size_t i = 0; i < points.size(); i+=2)
+    message = document.object();
+    qDebug() <<"read "<<message;
+
+    if(message.contains("command"))
+    {
+      QString command = message["command"].toString();
+      if(command == "point for graphing function")
       {
-        point.setX(points.at(i).toInt());
-        point.setY(points.at(i + 1).toInt());
-        if(m_waves->elementCount() == 200)
+        for(size_t i = 0; i < message["VariableData"].toArray().size(); i++)
         {
-          m_waves->moveTo(point);
-          m_waves->clear();
+          points.push_back(message["VariableData"].toArray().at(i).toDouble());
         }
-        else
-        {
-          m_waves->lineTo(point);
-        }
-        m_pathWaves->setPath(*m_waves);
+        drawPoint(points);
       }
     }
   }
 }
 
-void MainWindow::sendToClient(QJsonObject message)
+void MainWindow::drawPoint(QList<float> points)
 {
-  QJsonDocument document(message);
-  m_socket->write(document.toJson());
-  qDebug() <<"Request sent: "<< message;
+  QPoint point;
+  if(points.size()%2 != 0)
+  {
+    qDebug() << "problem with points";
+    points.removeLast();
+  }
+  for(size_t i = 0; i < points.size(); i+=2)
+  {
+    point.setX(points.at(i));
+    point.setY(points.at(i + 1));
+    if(m_waves->elementCount() == 200)
+    {
+      m_waves->moveTo(point);
+      m_waves->clear();
+    }
+    else
+    {
+      m_waves->lineTo(point);
+    }
+    m_pathWaves->setPath(*m_waves);
+  }
 }
 
 void MainWindow::onConnectToServerClicked()
@@ -159,11 +184,13 @@ void MainWindow::onConnectToServerClicked()
     m_ui->textBrowser->append("reconnecting to the server");
     deleteSocket();
     m_ui->ConnectToServer->setText("Connect");
+    m_ui->comboBox->setDisabled(false);
     return;
   }
 
   createSocket();
   m_ui->ConnectToServer->setText("Disconnect");
+  m_ui->comboBox->setDisabled(true);
 
   m_socket->connectToHost(m_ui->lineAddres->text(), m_ui->spinPort->value());
 
@@ -182,8 +209,8 @@ void MainWindow::onConnectToServerClicked()
     }
 
     int keepIdle = 10;
-    if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(keepIdle)) == -1)
-    {
+    if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPALIVE, &keepIdle, sizeof(keepIdle)) == -1)
+    { //for mac TCP_KEEPALIVE
       qWarning() << "2Failed to set TCP_KEEPIDLE."<<strerror(errno);
     }
 
@@ -198,12 +225,16 @@ void MainWindow::onConnectToServerClicked()
     {
       qWarning() << "4Failed to set TCP_KEEPCNT."<<strerror(errno);
     }
+
+    sendToClient("type of protocol");
   }
   else
   {
     m_socket->close();
     deleteSocket();
     m_ui->textBrowser->append(QString("Не подключено"));
+    m_ui->ConnectToServer->setText("Connect");
+    m_ui->comboBox->setDisabled(false);
   }
 }
 
@@ -221,10 +252,7 @@ void MainWindow::onSendRequestClicked()
       m_scene->addItem(m_pathWaves);
 
       qDebug() << "press";
-      QJsonObject typeSignal;
-      typeSignal["command"] = "setting the type of signal";
-      typeSignal["VariableData"] = m_ui->TypeSignal->currentText();
-      sendToClient(typeSignal);
+      sendToClient("setting the type of signal", m_ui->typeSignal->currentText());
     }
   }
   else
@@ -234,10 +262,50 @@ void MainWindow::onSendRequestClicked()
 }
 
 
+void MainWindow::sendToClient(QString commandText, QString VariableData)
+{
+  if(m_ui->comboBox->currentText() == "XML")
+  {
+    QDomDocument XMLDocument;
+    QDomElement root = XMLDocument.createElement("task");
+
+    QDomElement command = XMLDocument.createElement("command");
+    QDomText comm = XMLDocument.createTextNode(commandText);
+
+    root.appendChild(command);
+    command.appendChild(comm);
+
+    QDomElement variableData = XMLDocument.createElement("VariableData");
+    QDomText variableDataText = XMLDocument.createTextNode(VariableData);
+
+    root.appendChild(variableData);
+    variableData.appendChild(variableDataText);
+
+    XMLDocument.appendChild(root);
+
+    qDebug()<<XMLDocument.toByteArray(0);
+
+    m_socket->write(XMLDocument.toByteArray());
+  }
+  else
+  {
+    QJsonObject message;
+    message["command"] = commandText;
+    if(!VariableData.isEmpty())
+    {
+      message["VariableData"] = VariableData;
+    }
+    QJsonDocument JSONDocument(message);
+    m_socket->write(JSONDocument.toJson());
+    qDebug() <<"Request sent: "<< message;
+  }
+}
+
 void MainWindow::onCheckBoxClicked()
 {
-  QDomDocument doc;
   /*
+   *     QDomDocument XMLDocument;
+    QDomElement root = XMLDocument.createElement("task");
 
     <?xml encoding="utf-8" version="1.0" ?>
     <Task>
@@ -245,38 +313,14 @@ void MainWindow::onCheckBoxClicked()
       <VariableData>awadw</VariableData>
       <Variableaw>awadw</VariableDaawd>
     </Task>
+  */
 
-*/
-  { // генерация задачи
-    QDomElement root = doc.createElement("task");
-
-    QDomElement command = doc.createElement("command");
-    QDomText variableData = doc.createTextNode("cos");
-    command.appendChild(variableData);
-
-
-    root.appendChild(command);
-
-    doc.appendChild(root);
-    qDebug() << doc.toByteArray(0);
-  }
-
-  {
-    QDomElement root = doc.documentElement().toElement();
-    QDomElement command = root.elementsByTagName("command").at(0).toElement();
-    QDomText text = command.firstChild().toText();
-
-
-
-    qDebug() << "Server parsed: " << text.data();
-  }
-//  qDebug()<< messega.documentElement().firstChildElement("command2").text();
   if(m_socket != nullptr)
   {
-    qDebug() << "press";
+    //qDebug() << "pressed draw point";
     QJsonObject typeSignal;
     typeSignal["command"] = "setting draw point";
-    sendToClient(typeSignal);
+    sendToClient("setting draw point");
     qDebug()<<typeSignal;
   }
 }

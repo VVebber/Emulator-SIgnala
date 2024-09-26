@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTcpSocket>
 #include <QJsonObject>
+#include <QList>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -13,7 +14,7 @@ QT_END_NAMESPACE
 
 class QGraphicsPathItem;
 class QGraphicsScene;
-//class Q
+//class QList;
 
 class MainWindow : public QMainWindow
 {
@@ -41,8 +42,9 @@ private:
 
 private:
   void createSocket();
-  void sendToClient(QJsonObject message);
   void settingCoordinateSystems();
+  void sendToClient(QString command, QString VariableData = "");
+  void drawPoint(QList<float>  points);
 };
 #endif // MAINWINDOW_H
 
