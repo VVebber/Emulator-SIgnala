@@ -1,5 +1,11 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+
+#include "protocoljson.h"
+#include "protocolxml.h"
+#include "protocol.h"
+#include "command.h"
+
 #include <QGraphicsPathItem>
 #include <QJsonDocument>
 #include <QMessageBox>
@@ -30,9 +36,12 @@ MainWindow::MainWindow(QWidget *parent)
   connect(m_ui->ConnectToServer,&QPushButton::clicked, this, &MainWindow::onConnectToServerClicked);
   connect(m_ui->SendRequest,&QPushButton::clicked, this, &MainWindow::onSendRequestClicked);
   connect(m_ui->checkBox,&QPushButton::clicked, this, &MainWindow::onCheckBoxClicked);
+  connect(m_ui->comboBox, qOverload<int>(&QComboBox::activated), this, &MainWindow::onComboBoxActivated);
 
-  m_ui->lineAddres->setText("127.0.0.1");
+  m_ui->lineAddres->setText("192.168.0.45");
   settingCoordinateSystems();
+
+  m_protocol = new ProtocolJSON;
 }
 
 MainWindow::~MainWindow()
@@ -209,7 +218,7 @@ void MainWindow::onConnectToServerClicked()
     }
 
     int keepIdle = 10;
-    if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPALIVE, &keepIdle, sizeof(keepIdle)) == -1)
+    if (setsockopt(intSocketDescriptor, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(keepIdle)) == -1)
     { //for mac TCP_KEEPALIVE
       qWarning() << "2Failed to set TCP_KEEPIDLE."<<strerror(errno);
     }
@@ -225,8 +234,6 @@ void MainWindow::onConnectToServerClicked()
     {
       qWarning() << "4Failed to set TCP_KEEPCNT."<<strerror(errno);
     }
-
-    sendToClient("type of protocol");
   }
   else
   {
@@ -244,15 +251,7 @@ void MainWindow::onSendRequestClicked()
   {
     if(m_socket->isOpen())
     {
-      m_scene->removeItem(m_pathWaves);
-      m_waves->clear();
-      delete m_waves;
-      m_waves = new QPainterPath();
-      m_pathWaves->setPath(*m_waves);
-      m_scene->addItem(m_pathWaves);
-
-      qDebug() << "press";
-      sendToClient("setting the type of signal", m_ui->typeSignal->currentText());
+      m_socket->write(m_protocol->encode("setting the type of signal", m_ui->typeSignal->currentText()));
     }
   }
   else
@@ -261,67 +260,26 @@ void MainWindow::onSendRequestClicked()
   }
 }
 
-
-void MainWindow::sendToClient(QString commandText, QString VariableData)
+void MainWindow::onCheckBoxClicked()
 {
-  if(m_ui->comboBox->currentText() == "XML")
+  if(m_socket != nullptr)
   {
-    QDomDocument XMLDocument;
-    QDomElement root = XMLDocument.createElement("task");
-
-    QDomElement command = XMLDocument.createElement("command");
-    QDomText comm = XMLDocument.createTextNode(commandText);
-
-    root.appendChild(command);
-    command.appendChild(comm);
-
-    QDomElement variableData = XMLDocument.createElement("VariableData");
-    QDomText variableDataText = XMLDocument.createTextNode(VariableData);
-
-    root.appendChild(variableData);
-    variableData.appendChild(variableDataText);
-
-    XMLDocument.appendChild(root);
-
-    qDebug()<<XMLDocument.toByteArray(0);
-
-    m_socket->write(XMLDocument.toByteArray());
-  }
-  else
-  {
-    QJsonObject message;
-    message["command"] = commandText;
-    if(!VariableData.isEmpty())
-    {
-      message["VariableData"] = VariableData;
-    }
-    QJsonDocument JSONDocument(message);
-    m_socket->write(JSONDocument.toJson());
-    qDebug() <<"Request sent: "<< message;
+    m_socket->write(m_protocol->encode("setting draw point", ""));
   }
 }
 
-void MainWindow::onCheckBoxClicked()
+
+void MainWindow::onComboBoxActivated(int index)
 {
-  /*
-   *     QDomDocument XMLDocument;
-    QDomElement root = XMLDocument.createElement("task");
-
-    <?xml encoding="utf-8" version="1.0" ?>
-    <Task>
-      <commad>command name</command>
-      <VariableData>awadw</VariableData>
-      <Variableaw>awadw</VariableDaawd>
-    </Task>
-  */
-
-  if(m_socket != nullptr)
+  if(m_ui->comboBox->currentText() == "XML")
   {
-    //qDebug() << "pressed draw point";
-    QJsonObject typeSignal;
-    typeSignal["command"] = "setting draw point";
-    sendToClient("setting draw point");
-    qDebug()<<typeSignal;
+    delete m_protocol;
+    m_protocol = new ProtocolXML;
+  }
+  else
+  {
+    delete m_protocol;
+    m_protocol = new ProtocolJSON;
   }
 }
 

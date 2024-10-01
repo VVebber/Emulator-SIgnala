@@ -14,7 +14,7 @@ QT_END_NAMESPACE
 
 class QGraphicsPathItem;
 class QGraphicsScene;
-//class QList;
+class Protocol;
 
 class MainWindow : public QMainWindow
 {
@@ -33,17 +33,20 @@ private slots:
 
   void onCheckBoxClicked();
 
+  void onComboBoxActivated(int index);
+
 private:
   Ui::MainWindow *m_ui;
   QTcpSocket* m_socket;
   QPainterPath* m_waves;
   QGraphicsPathItem* m_pathWaves;
   QGraphicsScene* m_scene;
+  Protocol* m_protocol;
+
 
 private:
   void createSocket();
   void settingCoordinateSystems();
-  void sendToClient(QString command, QString VariableData = "");
   void drawPoint(QList<float>  points);
 };
 #endif // MAINWINDOW_H

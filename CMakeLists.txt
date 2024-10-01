@@ -9,17 +9,22 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt5 COMPONENTS Widgets Network REQUIRES Xml)
+find_package(Qt5 REQUIRED COMPONENTS Widgets Network)
+add_subdirectory(lib/ProtocolLib)
 
 set(PROJECT_SOURCES
-        src/main.cpp
-        src/mainwindow.cpp
-        src/mainwindow.h
-        src/mainwindow.ui
+  src/main.cpp
+  src/mainwindow.cpp
+  src/mainwindow.h
+  src/mainwindow.ui
 )
 
-add_executable(Client
+add_executable(client
   ${PROJECT_SOURCES}
 )
 
-target_link_libraries(Client PRIVATE Qt5::Widgets Qt5::Network Qt5::Xml)
+target_link_libraries(client PRIVATE
+  Qt5::Widgets
+  Qt5::Network
+  protocol
+)
