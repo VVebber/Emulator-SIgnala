@@ -18,6 +18,7 @@
 #include <QtXml>
 
 #include <sys/socket.h>
+#include <unistd.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
@@ -63,13 +64,13 @@ void MainWindow::createSocket()
 {
   m_socket = new QTcpSocket;
 
-  connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFroClient);
+  connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFromClient);
   connect(m_socket, &QTcpSocket::disconnected, this, &MainWindow::deleteSocket);
 }
 
 void MainWindow::deleteSocket()
 {
-  disconnect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFroClient);
+  disconnect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFromClient);
   disconnect(m_socket, &QTcpSocket::disconnected, this, &MainWindow::deleteSocket);
 
   if(m_ui->textBrowser)
@@ -116,48 +117,26 @@ void MainWindow::onLineAddresTextChanged(const QString &arg1)
   m_ui->lineAddres->update();
 }
 
-void MainWindow::readFroClient()
+
+void MainWindow::readFromClient()
 {
   QList<float> points;
-  if(m_ui->comboBox->currentText() == "XML")
-  {
-    QDomDocument main;
-    main.setContent(m_socket->readAll());
-    QDomElement box = main.documentElement();
-    QString command = box.elementsByTagName("command").at(0).toElement().text();
-    QDomNodeList variableDataNodes = box.elementsByTagName("VariableData").at(0).childNodes();
+  QString sizeMessegStr;
+  QString messeg = "";
 
-    QString textMessege = box.toText().data();
-    if(command == "point for graphing function")
-    {
-      for (int i = 0; i < variableDataNodes.size(); ++i)
-      {
-        points.push_back(variableDataNodes.at(i).toElement().childNodes().at(0).toText().data().toInt());
-      }
-      drawPoint(points);
+  m_protocol->addData(m_socket->readAll());
+  Command command = m_protocol->getNextCommand();
+
+  switch (command.getCommandType()) {
+  case Command::CommandType::PointGraphing:
+    for(int i = 0; i < command.size(); i++){
+      points.push_back(command.atVariableData(i));
     }
-  }
-  else
-  {
-    QJsonObject message;
-    QJsonDocument document;
-    document = QJsonDocument::fromJson(m_socket->readAll());
-
-    message = document.object();
-    qDebug() <<"read "<<message;
-
-    if(message.contains("command"))
-    {
-      QString command = message["command"].toString();
-      if(command == "point for graphing function")
-      {
-        for(size_t i = 0; i < message["VariableData"].toArray().size(); i++)
-        {
-          points.push_back(message["VariableData"].toArray().at(i).toDouble());
-        }
-        drawPoint(points);
-      }
-    }
+    drawPoint(points);
+    break;
+  default:
+    qDebug() <<"the request is not understood";
+    break;
   }
 }
 
@@ -169,6 +148,7 @@ void MainWindow::drawPoint(QList<float> points)
     qDebug() << "problem with points";
     points.removeLast();
   }
+
   for(size_t i = 0; i < points.size(); i+=2)
   {
     point.setX(points.at(i));
@@ -251,7 +231,15 @@ void MainWindow::onSendRequestClicked()
   {
     if(m_socket->isOpen())
     {
-      m_socket->write(m_protocol->encode("setting the type of signal", m_ui->typeSignal->currentText()));
+      //clear pointer
+      m_scene->removeItem(m_pathWaves);
+      m_waves->clear();
+      delete m_waves;
+      m_waves = new QPainterPath();
+      m_pathWaves->setPath(*m_waves);
+      m_scene->addItem(m_pathWaves);
+
+      m_socket->write(m_protocol->encode(Command::CommandType::TypeSignalSetting, m_ui->typeSignal->currentText()));
     }
   }
   else
@@ -264,10 +252,9 @@ void MainWindow::onCheckBoxClicked()
 {
   if(m_socket != nullptr)
   {
-    m_socket->write(m_protocol->encode("setting draw point", ""));
+    m_socket->write(m_protocol->encode(Command::CommandType::DrawStartOrFin, ""));
   }
 }
-
 
 void MainWindow::onComboBoxActivated(int index)
 {

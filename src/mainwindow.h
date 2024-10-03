@@ -26,13 +26,12 @@ public:
 
 private slots:
   void onLineAddresTextChanged(const QString &arg1);
-  void readFroClient();
+  void readFromClient();
   void deleteSocket();
+
   void onConnectToServerClicked();
   void onSendRequestClicked();
-
   void onCheckBoxClicked();
-
   void onComboBoxActivated(int index);
 
 private:
@@ -42,7 +41,7 @@ private:
   QGraphicsPathItem* m_pathWaves;
   QGraphicsScene* m_scene;
   Protocol* m_protocol;
-
+  int m_SizeBoxProtocol;
 
 private:
   void createSocket();
