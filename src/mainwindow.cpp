@@ -123,7 +123,7 @@ void MainWindow::readFromServer()
   QList<float> points;
 
   m_protocol->addData(m_socket->readAll());
-  Command command = m_protocol->decode(m_protocol->getNextCommand());
+  Command command = m_protocol->getNextCommand();
   while(command.isValid())
   {
     switch (command.getCommandType())
@@ -139,9 +139,8 @@ void MainWindow::readFromServer()
       break;
     }
 
-    command = m_protocol->decode(m_protocol->getNextCommand());
+    command = m_protocol->getNextCommand();
   }
-
 }
 
 void MainWindow::drawPoint(QList<float> points)
