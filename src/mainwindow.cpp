@@ -64,13 +64,13 @@ void MainWindow::createSocket()
 {
   m_socket = new QTcpSocket;
 
-  connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFromClient);
+  connect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFromServer);
   connect(m_socket, &QTcpSocket::disconnected, this, &MainWindow::deleteSocket);
 }
 
 void MainWindow::deleteSocket()
 {
-  disconnect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFromClient);
+  disconnect(m_socket, &QTcpSocket::readyRead, this, &MainWindow::readFromServer);
   disconnect(m_socket, &QTcpSocket::disconnected, this, &MainWindow::deleteSocket);
 
   if(m_ui->textBrowser)
@@ -118,26 +118,30 @@ void MainWindow::onLineAddresTextChanged(const QString &arg1)
 }
 
 
-void MainWindow::readFromClient()
+void MainWindow::readFromServer()
 {
   QList<float> points;
-  QString sizeMessegStr;
-  QString messeg = "";
 
   m_protocol->addData(m_socket->readAll());
-  Command command = m_protocol->getNextCommand();
-
-  switch (command.getCommandType()) {
-  case Command::CommandType::PointGraphing:
-    for(int i = 0; i < command.size(); i++){
-      points.push_back(command.atVariableData(i));
+  Command command = m_protocol->decode(m_protocol->getNextCommand());
+  while(command.isValid())
+  {
+    switch (command.getCommandType())
+    {
+    case Command::CommandType::PointGraphing:
+      for(int i = 0; i < command.size(); i++){
+        points.push_back(command.atVariableData(i));
+      }
+      drawPoint(points);
+      break;
+    default:
+      qDebug() <<"the request is not understood";
+      break;
     }
-    drawPoint(points);
-    break;
-  default:
-    qDebug() <<"the request is not understood";
-    break;
+
+    command = m_protocol->decode(m_protocol->getNextCommand());
   }
+
 }
 
 void MainWindow::drawPoint(QList<float> points)
@@ -239,7 +243,10 @@ void MainWindow::onSendRequestClicked()
       m_pathWaves->setPath(*m_waves);
       m_scene->addItem(m_pathWaves);
 
-      m_socket->write(m_protocol->encode(Command::CommandType::TypeSignalSetting, m_ui->typeSignal->currentText()));
+      auto data = m_protocol->encode(Command::CommandType::TypeSignalSetting, m_ui->typeSignal->currentText());
+      m_socket->write(data.mid(0, 10));
+      m_socket->flush();
+      m_socket->write(data.mid(10, -1));
     }
   }
   else
